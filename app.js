@@ -2,8 +2,7 @@
 
 document.addEventListener('DOMContentLoaded', () => {
   // ===== CONFIG =====
-  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyX5vn0MvLGpX7xIbXshDmgnb0nPQSDmiHhFVNI1PPRHHNgnGfVtj0sooRsXXSlnGzc/exec"; // <-- tu /exec
-  const TIPO_FIJO = "CARGUE";        // SIEMPRE CARGUE
+    const TIPO_FIJO = "CARGUE";        // SIEMPRE CARGUE
   const AUTOSYNC_MS = 30_000;        // re-carga Liquidaciones cada 30s
   // ==================
 
