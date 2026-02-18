@@ -342,52 +342,65 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // Enviar a base (agrupado por color/vehículo/ciudad)
-  btnEnviar?.addEventListener('click', async ()=>{
-    if (!scanned.length) { alert('No hay escaneos.'); return; }
-    if (!/^https?:\/\/script\.google\.com\/macros\//.test(SCRIPT_URL)) {
-      alert('Configura SCRIPT_URL en app.js');
-      return;
-    }
+// ===== ENVIAR A MYSQL (API UNIFICADA) =====
+btnEnviar?.addEventListener('click', async ()=>{
 
-    // construir payload por grupos
-    const gruposPayload = [];
+  if (!scanned.length) {
+    alert('No hay escaneos.');
+    return;
+  }
+
+  const sede = document.getElementById('sede')?.value || 'BODEGA';
+  const fecha = new Date().toISOString().slice(0,10);
+
+  let totalEnviadas = 0;
+
+  try {
+
+    // recorremos cada vehículo/grupo
     for (const [key, g] of grouped.entries()) {
+
       if (!g.datos.length) continue;
-      gruposPayload.push({
-        placa: g.placa,
-        ciudad: g.ciudad,
-        color: g.color,
-        datos: g.datos   // [{codigo(11),hora}]
-      });
-    }
-    if (!gruposPayload.length) { alert('No hay grupos con datos.'); return; }
 
-    const meta = { tipo: TIPO_FIJO, timestamp_envio: new Date().toISOString() };
+      // convertir al formato universal
+      const unidades = g.datos.map(d => ({
+        codigo: d.codigo,
+        hora: d.hora,
+        estado: "CORRECTO"
+      }));
 
-    const prev = btnEnviar.textContent;
-    btnEnviar.disabled = true;
-    btnEnviar.textContent = 'Enviando…';
-    try{
-      const resp = await fetch(SCRIPT_URL, {
+      const payload = {
+        tipo: "CARGUE",
+        placa: g.placa || "SIN_PLACA",
+        sede: sede,
+        fecha_operativa: fecha,
+        unidades: unidades
+      };
+
+      const resp = await fetch('https://exprecar.com/api/guardar_proceso.php', {
         method: 'POST',
-        headers: { 'Content-Type': 'text/plain;charset=UTF-8' }, // CORS simple (sin preflight)
-        body: JSON.stringify({ meta, grupos: gruposPayload })
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
       });
-      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-      const out = await resp.json().catch(()=>({}));
-      alert(`OK. Hoja: ${out.sheet || '-'} — Bloques: ${out.blocks || 0}`);
-      // (Si quieres limpiar auto tras enviar, descomenta)
-      // btnClear.click();
-    }catch(err){
-      console.error(err);
-      alert('No se pudo enviar. Revisa la consola.');
-    }finally{
-      btnEnviar.disabled = false;
-      btnEnviar.textContent = prev;
-      input.focus();
+
+      const data = await resp.json();
+
+      if (!data.ok) {
+        console.error(data);
+        throw new Error('Error guardando grupo ' + (g.placa || 'SIN_PLACA'));
+      }
+
+      totalEnviadas += data.total_unidades;
     }
-  });
+
+    alert(`CARGUE guardado correctamente\nUnidades enviadas: ${totalEnviadas}`);
+
+  } catch(err){
+    console.error(err);
+    alert('Error enviando a la base de datos');
+  }
+
+});
 
   // ===== Init =====
   restoreLocal();
